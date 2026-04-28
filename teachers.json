@@ -1,0 +1,124 @@
+{
+  "teachers": [
+    {
+      "id": "t001",
+      "name": "梁浩然",
+      "classId": "c1",
+      "className": "高一(1)班-物化生",
+      "grade": "高一",
+      "password": "123456"
+    },
+    {
+      "id": "t002",
+      "name": "崔洋",
+      "classId": "c2",
+      "className": "高一(2)班-物化地",
+      "grade": "高一",
+      "password": "123456"
+    },
+    {
+      "id": "t003",
+      "name": "任梦瑶",
+      "classId": "c3",
+      "className": "高一(3)班-物化政",
+      "grade": "高一",
+      "password": "123456"
+    },
+    {
+      "id": "t004",
+      "name": "蔡秀英",
+      "classId": "c4",
+      "className": "高一(4)班-历政地",
+      "grade": "高一",
+      "password": "123456"
+    },
+    {
+      "id": "t005",
+      "name": "王嘉熙",
+      "classId": "c5",
+      "className": "高一(5)班-历政生",
+      "grade": "高一",
+      "password": "123456"
+    },
+    {
+      "id": "t006",
+      "name": "金芳",
+      "classId": "c6",
+      "className": "高二(1)班-物化生",
+      "grade": "高二",
+      "password": "123456"
+    },
+    {
+      "id": "t007",
+      "name": "彭博文",
+      "classId": "c7",
+      "className": "高二(2)班-物化地",
+      "grade": "高二",
+      "password": "123456"
+    },
+    {
+      "id": "t008",
+      "name": "徐国栋",
+      "classId": "c8",
+      "className": "高二(3)班-物化政",
+      "grade": "高二",
+      "password": "123456"
+    },
+    {
+      "id": "t009",
+      "name": "黄静",
+      "classId": "c9",
+      "className": "高二(4)班-历政地",
+      "grade": "高二",
+      "password": "123456"
+    },
+    {
+      "id": "t010",
+      "name": "郭美琳",
+      "classId": "c10",
+      "className": "高二(5)班-历政生",
+      "grade": "高二",
+      "password": "123456"
+    },
+    {
+      "id": "t011",
+      "name": "何瑞霖",
+      "classId": "c11",
+      "className": "高三(1)班-物化生",
+      "grade": "高三",
+      "password": "123456"
+    },
+    {
+      "id": "t012",
+      "name": "胡钰彤",
+      "classId": "c12",
+      "className": "高三(2)班-物化地",
+      "grade": "高三",
+      "password": "123456"
+    },
+    {
+      "id": "t013",
+      "name": "袁语嫣",
+      "classId": "c13",
+      "className": "高三(3)班-物化政",
+      "grade": "高三",
+      "password": "123456"
+    },
+    {
+      "id": "t014",
+      "name": "罗文博",
+      "classId": "c14",
+      "className": "高三(4)班-历政地",
+      "grade": "高三",
+      "password": "123456"
+    },
+    {
+      "id": "t015",
+      "name": "蒋若曦",
+      "classId": "c15",
+      "className": "高三(5)班-历政生",
+      "grade": "高三",
+      "password": "123456"
+    }
+  ]
+}

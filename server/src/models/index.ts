@@ -1,0 +1,9 @@
+export { default as User } from './User';
+export { default as Student } from './Student';
+export { default as Teacher } from './Teacher';
+export { default as Grade } from './Grade';
+export { default as Class } from './Class';
+export { default as Exam } from './Exam';
+export { default as Score } from './Score';
+export { default as Announcement } from './Announcement';
+export { default as School } from './School';
