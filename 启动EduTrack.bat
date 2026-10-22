@@ -9,11 +9,11 @@ echo ===========================================
 echo.
 
 echo [1/2] Starting backend server (port 3000)...
-start "EduTrack-Server" cmd /k "cd /d c:\Users\mimo\Desktop\Edu\server && npm run dev"
+start "EduTrack-Server" /D "%~dp0server" cmd /k npm run dev
 timeout /t 5 /nobreak >nul
 
 echo [2/2] Starting frontend server...
-start "EduTrack-Client" cmd /k "cd /d c:\Users\mimo\Desktop\Edu\client && npm run dev"
+start "EduTrack-Client" /D "%~dp0client" cmd /k npm run dev
 timeout /t 8 /nobreak >nul
 
 echo.

@@ -1,7 +1,22 @@
 import fs from 'fs';
 import path from 'path';
 
-const PROJECT_ROOT = 'c:\\Users\\mimo\\Desktop\\Edu';
+const configuredDataDir = process.env.DATA_DIR;
+const workingDirectory = process.cwd();
+const PROJECT_ROOT = configuredDataDir
+  ? path.resolve(configuredDataDir)
+  : fs.existsSync(path.join(workingDirectory, 'school_data.json'))
+    ? workingDirectory
+    : path.resolve(workingDirectory, '..');
+const REPORTS_DIR = path.join(PROJECT_ROOT, 'grade_subject_reports');
+const CREDENTIALS_FILE = path.join(PROJECT_ROOT, 'auth_credentials.json');
+
+export function getLocalDataDir(): string {
+  return PROJECT_ROOT;
+}
+
+type CredentialRole = 'admin' | 'teacher' | 'student';
+type CredentialStore = Partial<Record<CredentialRole, Record<string, string>>>;
 
 export interface LocalStudent {
   id: string;
@@ -28,7 +43,7 @@ export interface LocalTeacher {
   classId: string;
   className: string;
   grade: string;
-  password: string;
+  password: string; // bcrypt hash
 }
 
 export interface ScoreRecord {
@@ -55,6 +70,23 @@ export interface GradeReport {
 let cachedSchoolData: { classes: LocalClass[] } | null = null;
 let cachedTeachers: { teachers: LocalTeacher[] } | null = null;
 let cachedGradeReports: Map<string, GradeReport> = new Map();
+
+function loadCredentialStore(): CredentialStore {
+  if (!fs.existsSync(CREDENTIALS_FILE)) return {};
+  return JSON.parse(fs.readFileSync(CREDENTIALS_FILE, 'utf-8')) as CredentialStore;
+}
+
+export function getCredentialHash(role: CredentialRole, id: string): string | null {
+  return loadCredentialStore()[role]?.[id] || null;
+}
+
+export function saveCredentialHash(role: CredentialRole, id: string, passwordHash: string): void {
+  const store = loadCredentialStore();
+  store[role] = { ...(store[role] || {}), [id]: passwordHash };
+  const temporaryFile = `${CREDENTIALS_FILE}.tmp`;
+  fs.writeFileSync(temporaryFile, JSON.stringify(store, null, 2), 'utf-8');
+  fs.renameSync(temporaryFile, CREDENTIALS_FILE);
+}
 
 export function loadSchoolData(): { classes: LocalClass[] } {
   if (cachedSchoolData) {
@@ -91,8 +123,23 @@ export function loadGradeReport(filename: string): GradeReport {
 }
 
 export function getAllGradeReportFiles(): string[] {
-  const dirPath = path.join(PROJECT_ROOT, 'grade_subject_reports');
-  return fs.readdirSync(dirPath).filter(f => f.endsWith('.json'));
+  return fs.readdirSync(REPORTS_DIR).filter(f => f.endsWith('.json'));
+}
+
+export function reloadLocalData() {
+  clearCache();
+  const schoolData = loadSchoolData();
+  const teachers = loadTeachers();
+  const gradeReportFiles = getAllGradeReportFiles();
+  gradeReportFiles.forEach(loadGradeReport);
+  return {
+    schoolFiles: 1,
+    teacherFiles: 1,
+    gradeReportFiles: gradeReportFiles.length,
+    classCount: schoolData.classes.length,
+    studentCount: schoolData.classes.reduce((sum, cls) => sum + cls.students.length, 0),
+    teacherCount: teachers.teachers.length,
+  };
 }
 
 export function findStudentById(studentId: string): { student: LocalStudent; classInfo: LocalClass } | null {
@@ -152,8 +199,7 @@ export function getStudentScores(studentId: string): ScoreRecord[] {
   }
 
   return scores.sort((a, b) => {
-    const examOrder = ['月考1', '月考2', '月考3', '期中考试', '期末考试'];
-    return examOrder.indexOf(a.考试) - examOrder.indexOf(b.考试);
+    return compareExamNames(a.考试, b.考试);
   });
 }
 
@@ -171,7 +217,29 @@ export function getClassScores(className: string): ScoreRecord[] {
 }
 
 export function getAvailableExams(): string[] {
-  return ['月考1', '月考2', '月考3', '期中考试', '期末考试'];
+  const exams = new Set<string>();
+  getAllGradeReportFiles().forEach(file => {
+    exams.add(loadGradeReport(file).考试);
+  });
+  return Array.from(exams).sort(compareExamNames);
+}
+
+function compareExamNames(a: string, b: string): number {
+  const getOrder = (name: string): [number, number] => {
+    if (name.includes('期末')) return [300, 0];
+    if (name.includes('期中')) return [200, 0];
+    const monthly = name.match(/月考\s*(\d+)/);
+    if (monthly) return [100, Number(monthly[1])];
+    return [150, 0];
+  };
+
+  const [aGroup, aIndex] = getOrder(a);
+  const [bGroup, bIndex] = getOrder(b);
+  return aGroup - bGroup || aIndex - bIndex || a.localeCompare(b, 'zh-CN');
+}
+
+export function getLatestExam(): string | null {
+  return getAvailableExams().at(-1) || null;
 }
 
 export function clearCache(): void {

@@ -36,7 +36,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (role === 'admin') {
         response = await api.loginAdmin(credentials.username, credentials.password);
       } else if (role === 'teacher') {
-        response = await api.loginTeacher(credentials.name, credentials.password);
+        response = await api.loginTeacher(credentials.employeeId, credentials.password);
       } else {
         response = await api.loginStudent(credentials.studentId, credentials.password);
       }
@@ -97,3 +97,4 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   clearError: () => set({ error: null }),
 }));
+

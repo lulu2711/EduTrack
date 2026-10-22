@@ -1,7 +1,16 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-key';
-const JWT_EXPIRES_IN: SignOptions['expiresIn'] = '7d';
+const getJwtSecret = (): string => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error('JWT_SECRET is required and must be at least 32 characters long');
+  }
+  return secret;
+};
+
+const getJwtExpiresIn = (): SignOptions['expiresIn'] => {
+  return (process.env.JWT_EXPIRES_IN || '7d') as SignOptions['expiresIn'];
+};
 
 export interface TokenPayload {
   userId: string;
@@ -13,8 +22,8 @@ export interface TokenPayload {
  * 生成 JWT Token
  */
 export const generateToken = (payload: TokenPayload): string => {
-  return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN,
+  return jwt.sign(payload, getJwtSecret(), {
+    expiresIn: getJwtExpiresIn(),
   } as SignOptions);
 };
 
@@ -22,7 +31,7 @@ export const generateToken = (payload: TokenPayload): string => {
  * 验证 JWT Token
  */
 export const verifyToken = (token: string): TokenPayload => {
-  return jwt.verify(token, JWT_SECRET) as TokenPayload;
+  return jwt.verify(token, getJwtSecret()) as TokenPayload;
 };
 
 /**

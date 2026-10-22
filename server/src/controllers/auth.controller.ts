@@ -1,18 +1,25 @@
 import { Request, Response } from 'express';
+import bcrypt from 'bcrypt';
 import { generateToken } from '../utils/jwt';
+import { sendUnavailable } from '../utils/dataSource';
 import {
   findStudentById,
   findTeacherByName,
+  findTeacherById,
   getClassById,
   loadTeachers,
+  getCredentialHash,
+  saveCredentialHash,
 } from '../utils/localData';
+import { findMongoStudent, findMongoTeacher, mongoReady, verifyMongoPassword } from '../utils/mongoAuth';
+import { Student } from '../models';
 
-const MOCK_ADMIN = {
-  username: 'admin',
-  password: 'admin123',
+const getAdminAccount = () => ({
+  username: process.env.ADMIN_USERNAME || 'admin',
+  password: process.env.ADMIN_PASSWORD || 'admin123',
   id: 'admin001',
   name: '系统管理员',
-};
+});
 
 /**
  * 学生登录
@@ -21,6 +28,15 @@ const MOCK_ADMIN = {
 export const studentLogin = async (req: Request, res: Response): Promise<void> => {
   try {
     const { studentId, password } = req.body;
+    if (mongoReady()) {
+      const result = await findMongoStudent(String(studentId).trim());
+      if (!result || !(await verifyMongoPassword(result.user.password, password))) {
+        res.status(401).json({ success: false, error: { code: 'INVALID_CREDENTIALS', message: '学号或密码错误' } }); return;
+      }
+      const token = generateToken({ userId: String(result.user._id), role: 'student', refId: result.student.studentId });
+      res.json({ success: true, data: { token, user: { id: result.student.studentId, studentId: result.student.studentId, name: result.student.name, role: 'student', classId: result.cls?._id ? String(result.cls._id) : undefined, className: result.cls?.name, grade: result.grade?.name } } }); return;
+    }
+
 
     if (!studentId || !password) {
       res.status(400).json({
@@ -40,9 +56,14 @@ export const studentLogin = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    // 验证密码（默认密码为学号后6位或123456）
+    // 本地 JSON 模式暂时使用环境变量中的演示密码。
+    // 迁移到数据库后，学生密码也应改为每个用户独立的 bcrypt 哈希。
     const defaultPassword = studentId.slice(-6);
-    if (password !== defaultPassword && password !== '123456') {
+    const savedStudentHash = getCredentialHash('student', studentId);
+    const passwordMatches = savedStudentHash
+      ? await bcrypt.compare(password, savedStudentHash)
+      : password === defaultPassword || password === process.env.STUDENT_DEMO_PASSWORD;
+    if (!passwordMatches) {
       res.status(401).json({
         success: false,
         error: { code: 'INVALID_CREDENTIALS', message: '学号或密码错误' },
@@ -76,44 +97,53 @@ export const studentLogin = async (req: Request, res: Response): Promise<void> =
     });
   } catch (error) {
     console.error('Student login error:', error);
-    res.status(500).json({
-      success: false,
-      error: { code: 'INTERNAL_ERROR', message: '登录失败，请稍后重试' },
-    });
+    sendUnavailable(res, error, '登录失败，请稍后重试');
   }
 };
 
 /**
- * 教师登录（步骤1：姓名 + 密码）
+ * 教师登录（工号 + 密码）
  * POST /api/v1/auth/login/teacher
  */
 export const teacherLogin = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, password } = req.body;
+    const { employeeId, password } = req.body;
+    if (mongoReady()) {
+      const result = await findMongoTeacher(String(employeeId).trim());
+      if (!result || !(await verifyMongoPassword(result.user.password, password))) {
+        res.status(401).json({ success: false, error: { code: 'INVALID_CREDENTIALS', message: '工号或密码错误' } }); return;
+      }
+      const local = result.local;
+      const token = generateToken({ userId: String(result.user._id), role: 'teacher', refId: local?.id || String(result.user.username) });
+      res.json({ success: true, data: { token, user: { id: local?.id || String(result.user.username), name: result.teacher.name, role: 'teacher', classId: local?.classId || (result.cls?._id ? String(result.cls._id) : undefined), className: result.cls?.name || local?.className, grade: result.grade?.name || local?.grade, studentCount: result.cls?._id ? await Student.countDocuments({ classId: result.cls._id }) : 0 } } }); return;
+    }
 
-    if (!name || !password) {
+
+    if (!employeeId || !password) {
       res.status(400).json({
         success: false,
-        error: { code: 'INVALID_INPUT', message: '请提供姓名和密码' },
+        error: { code: 'INVALID_INPUT', message: '请提供工号和密码' },
       });
       return;
     }
 
     // 从本地数据查找教师
-    const teacher = findTeacherByName(name);
+    const teacher = findTeacherById(String(employeeId).trim());
     if (!teacher) {
       res.status(401).json({
         success: false,
-        error: { code: 'INVALID_CREDENTIALS', message: '姓名或密码错误' },
+        error: { code: 'INVALID_CREDENTIALS', message: '工号或密码错误' },
       });
       return;
     }
 
-    // 验证密码
-    if (password !== teacher.password) {
+    // 支持 bcrypt 哈希；迁移前的明文密码不再接受。
+    const passwordHash = getCredentialHash('teacher', teacher.id);
+    const passwordMatches = await bcrypt.compare(password, passwordHash || teacher.password);
+    if (!passwordMatches) {
       res.status(401).json({
         success: false,
-        error: { code: 'INVALID_CREDENTIALS', message: '姓名或密码错误' },
+        error: { code: 'INVALID_CREDENTIALS', message: '工号或密码错误' },
       });
       return;
     }
@@ -145,10 +175,7 @@ export const teacherLogin = async (req: Request, res: Response): Promise<void> =
     });
   } catch (error) {
     console.error('Teacher login error:', error);
-    res.status(500).json({
-      success: false,
-      error: { code: 'INTERNAL_ERROR', message: '登录失败，请稍后重试' },
-    });
+    sendUnavailable(res, error, '登录失败，请稍后重试');
   }
 };
 
@@ -159,6 +186,7 @@ export const teacherLogin = async (req: Request, res: Response): Promise<void> =
 export const adminLogin = async (req: Request, res: Response): Promise<void> => {
   try {
     const { username, password } = req.body;
+    const adminAccount = getAdminAccount();
 
     if (!username || !password) {
       res.status(400).json({
@@ -169,7 +197,11 @@ export const adminLogin = async (req: Request, res: Response): Promise<void> => 
     }
 
     // 验证管理员账号
-    if (username !== MOCK_ADMIN.username || password !== MOCK_ADMIN.password) {
+    const passwordHash = getCredentialHash('admin', adminAccount.id);
+    const passwordMatches = passwordHash
+      ? await bcrypt.compare(password, passwordHash)
+      : username === adminAccount.username && password === adminAccount.password;
+    if (username !== adminAccount.username || !passwordMatches) {
       res.status(401).json({
         success: false,
         error: { code: 'INVALID_CREDENTIALS', message: '账号或密码错误' },
@@ -179,9 +211,9 @@ export const adminLogin = async (req: Request, res: Response): Promise<void> => 
 
     // 生成 Token
     const token = generateToken({
-      userId: MOCK_ADMIN.id,
+      userId: adminAccount.id,
       role: 'admin',
-      refId: MOCK_ADMIN.id,
+      refId: adminAccount.id,
     });
 
     res.json({
@@ -189,19 +221,16 @@ export const adminLogin = async (req: Request, res: Response): Promise<void> => 
       data: {
         token,
         user: {
-          id: MOCK_ADMIN.id,
-          username: MOCK_ADMIN.username,
-          name: MOCK_ADMIN.name,
+          id: adminAccount.id,
+          username: adminAccount.username,
+          name: adminAccount.name,
           role: 'admin',
         },
       },
     });
   } catch (error) {
     console.error('Admin login error:', error);
-    res.status(500).json({
-      success: false,
-      error: { code: 'INTERNAL_ERROR', message: '登录失败，请稍后重试' },
-    });
+    sendUnavailable(res, error, '登录失败，请稍后重试');
   }
 };
 
@@ -231,17 +260,59 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    // TODO: 实现密码修改逻辑（需要保存密码到本地文件或数据库）
+    if (newPassword === oldPassword) {
+      res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_INPUT', message: '新密码不能与旧密码相同', details: [] },
+      });
+      return;
+    }
+
+    let passwordMatches = false;
+    if (role === 'admin') {
+      const account = getAdminAccount();
+      const savedHash = getCredentialHash('admin', account.id);
+      passwordMatches = savedHash
+        ? await bcrypt.compare(oldPassword, savedHash)
+        : oldPassword === account.password;
+    } else if (role === 'teacher') {
+      const teacher = findTeacherById(userId);
+      const savedHash = teacher && getCredentialHash('teacher', teacher.id);
+      passwordMatches = Boolean(teacher) && await bcrypt.compare(
+        oldPassword,
+        savedHash || teacher!.password
+      );
+    } else if (role === 'student') {
+      const student = findStudentById(userId);
+      const savedHash = getCredentialHash('student', userId);
+      passwordMatches = Boolean(student) && (
+        savedHash
+          ? await bcrypt.compare(oldPassword, savedHash)
+          : oldPassword === userId.slice(-6) || oldPassword === process.env.STUDENT_DEMO_PASSWORD
+      );
+    }
+
+    if (!passwordMatches) {
+      res.status(401).json({
+        success: false,
+        error: { code: 'INVALID_CREDENTIALS', message: '旧密码不正确', details: [] },
+      });
+      return;
+    }
+
+    await saveCredentialHash(
+      role!,
+      role === 'admin' ? 'admin001' : userId,
+      await bcrypt.hash(newPassword, 12)
+    );
+
     res.json({
       success: true,
-      message: '密码修改成功（演示模式）',
+      data: { message: '密码修改成功，请重新登录', requiresReauthentication: true },
     });
   } catch (error) {
     console.error('Change password error:', error);
-    res.status(500).json({
-      success: false,
-      error: { code: 'INTERNAL_ERROR', message: '密码修改失败，请稍后重试' },
-    });
+    sendUnavailable(res, error, '密码修改失败，请稍后重试');
   }
 };
 
@@ -264,6 +335,14 @@ export const getCurrentUser = async (req: Request, res: Response): Promise<void>
     }
 
     let userInfo: any = null;
+    const adminAccount = getAdminAccount();
+    if (mongoReady() && role === 'student') {
+      const result = await findMongoStudent(refId);
+      if (result) userInfo = { id: result.student.studentId, studentId: result.student.studentId, name: result.student.name, classId: result.cls?._id ? String(result.cls._id) : undefined, className: result.cls?.name, grade: result.grade?.name };
+    } else if (mongoReady() && role === 'teacher') {
+      const result = await findMongoTeacher(refId);
+      if (result) userInfo = { id: result.local?.id || String(result.user.username), name: result.teacher.name, classId: result.local?.classId || (result.cls?._id ? String(result.cls._id) : undefined), className: result.cls?.name || result.local?.className, grade: result.grade?.name || result.local?.grade, studentCount: result.cls?._id ? await Student.countDocuments({ classId: result.cls._id }) : 0 };
+    }
 
     // 根据角色获取详细信息
     if (role === 'student') {
@@ -294,9 +373,9 @@ export const getCurrentUser = async (req: Request, res: Response): Promise<void>
       }
     } else if (role === 'admin') {
       userInfo = {
-        id: MOCK_ADMIN.id,
-        username: MOCK_ADMIN.username,
-        name: MOCK_ADMIN.name,
+        id: adminAccount.id,
+        username: adminAccount.username,
+        name: adminAccount.name,
       };
     }
 
@@ -317,9 +396,12 @@ export const getCurrentUser = async (req: Request, res: Response): Promise<void>
     });
   } catch (error) {
     console.error('Get current user error:', error);
-    res.status(500).json({
-      success: false,
-      error: { code: 'INTERNAL_ERROR', message: '获取用户信息失败' },
-    });
+    sendUnavailable(res, error, '获取用户信息失败');
   }
 };
+
+
+
+
+
+

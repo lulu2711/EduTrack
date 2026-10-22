@@ -56,8 +56,9 @@ const StudentSchema: Schema = new Schema(
 );
 
 // 索引
-StudentSchema.index({ studentId: 1 }, { unique: true });
 StudentSchema.index({ classId: 1 });
 StudentSchema.index({ gradeId: 1 });
 
 export default mongoose.model<IStudent>('Student', StudentSchema);
+
+

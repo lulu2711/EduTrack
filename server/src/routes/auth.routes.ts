@@ -20,3 +20,4 @@ router.post('/change-password', authenticate, changePassword);
 router.get('/me', authenticate, getCurrentUser);
 
 export default router;
+

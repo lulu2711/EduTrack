@@ -172,7 +172,10 @@ NODE_ENV=production
 PORT=3000
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 JWT_EXPIRES_IN=7d
+DATA_DIR=/app/data
 ```
+
+`DATA_DIR` 用于指定 `school_data.json`、`teachers.json`、`grade_subject_reports/` 和运行时凭据文件所在目录。开发环境可以留空并使用项目数据目录；部署环境建议显式配置为持久化目录。
 
 ### 前端 (.env.production)
 
@@ -198,7 +201,7 @@ VITE_API_URL=http://your-domain.com/api/v1
 - 密码: 123456
 
 ### 学生
-- 学号: 10101
+- 学号: 11953
 - 密码: 123456
 
 ## 常见问题

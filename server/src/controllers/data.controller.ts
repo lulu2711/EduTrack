@@ -11,16 +11,45 @@ import {
   getAllClasses,
   getAllTeachers,
   getAvailableExams,
+  getLatestExam,
   getAllGradeReportFiles,
   loadGradeReport,
   LocalClass,
   LocalStudent,
   ScoreRecord,
+  reloadLocalData,
 } from '../utils/localData';
+import { mongoClasses, mongoClass, mongoStudentScores, mongoClassScores } from '../utils/mongoData';
+import { mongoClassAnalysis, mongoExams, mongoDistribution, mongoProgress } from '../utils/mongoAnalysis';
+import { sendUnavailable, fail, requireMongoConnection, isStrictMongoMode } from '../utils/dataSource';
 
-export const getAllClassesHandler = (req: Request, res: Response): void => {
+export const reloadLocalDataHandler = (req: Request, res: Response): void => {
   try {
-    const classes = getAllClasses();
+    if (isStrictMongoMode()) throw new Error('Strict MongoDB mode blocks local JSON import');
+    res.json({
+      success: true,
+      data: {
+        ...reloadLocalData(),
+        message: '本地数据已重新加载并完成校验',
+      },
+    });
+  } catch (error) {
+    console.error('Local data reload error:', error);
+    sendUnavailable(res, error, '本地数据加载失败');
+  }
+};
+
+export const getAllClassesHandler = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const mongo = await mongoClasses();
+    if (mongo) { const visible = req.user?.role === 'admin' ? mongo : req.user?.role === 'teacher' ? mongo.filter(c => c.legacyId === findTeacherById(req.user!.refId)?.classId) : []; res.json({ success: true, data: visible }); return; }
+    const allClasses = getAllClasses();
+    const user = req.user;
+    const classes = user?.role === 'admin'
+      ? allClasses
+      : user?.role === 'teacher'
+        ? allClasses.filter(c => c.id === findTeacherById(user.refId)?.classId)
+        : [];
     res.json({
       success: true,
       data: classes.map(c => ({
@@ -33,17 +62,19 @@ export const getAllClassesHandler = (req: Request, res: Response): void => {
       })),
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: '获取班级列表失败' });
+    sendUnavailable(res, error, '获取班级列表失败');
   }
 };
 
-export const getClassDetail = (req: Request, res: Response): void => {
+export const getClassDetail = async (req: Request, res: Response): Promise<void> => {
   try {
+    const mongo = await mongoClass(req.params.classId);
+    if (mongo) { res.json({ success: true, data: mongo }); return; }
     const { classId } = req.params;
     const cls = getClassById(classId);
 
     if (!cls) {
-      res.status(404).json({ success: false, message: '班级不存在' });
+      fail(res, 404, 'NOT_FOUND', '班级不存在');
       return;
     }
 
@@ -60,12 +91,13 @@ export const getClassDetail = (req: Request, res: Response): void => {
       },
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: '获取班级详情失败' });
+    sendUnavailable(res, error, '获取班级详情失败');
   }
 };
 
 export const getAllTeachersHandler = (req: Request, res: Response): void => {
   try {
+    requireMongoConnection();
     const teachers = getAllTeachers();
     res.json({
       success: true,
@@ -78,7 +110,7 @@ export const getAllTeachersHandler = (req: Request, res: Response): void => {
       })),
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: '获取教师列表失败' });
+    sendUnavailable(res, error, '获取教师列表失败');
   }
 };
 
@@ -88,7 +120,7 @@ export const getTeacherDetail = (req: Request, res: Response): void => {
     const teacher = findTeacherById(teacherId);
 
     if (!teacher) {
-      res.status(404).json({ success: false, message: '教师不存在' });
+      fail(res, 404, 'NOT_FOUND', '教师不存在');
       return;
     }
 
@@ -106,17 +138,19 @@ export const getTeacherDetail = (req: Request, res: Response): void => {
       },
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: '获取教师详情失败' });
+    sendUnavailable(res, error, '获取教师详情失败');
   }
 };
 
-export const getStudentDetail = (req: Request, res: Response): void => {
+export const getStudentDetail = async (req: Request, res: Response): Promise<void> => {
   try {
+    const mongoScores = await mongoStudentScores(req.params.studentId);
+    if (mongoScores) { const models = await import('../models'); const student = await models.Student.findOne({ studentId: req.params.studentId }).lean(); const cls = student ? await models.Class.findById(student.classId).lean() : null; const grade = student ? await models.Grade.findById(student.gradeId).lean() : null; res.json({ success: true, data: { id: req.params.studentId, name: student?.name, classId: cls ? String(cls._id) : undefined, className: cls?.name, grade: grade?.name, combination: { physics_history: cls?.combination?.physicsHistory, electives: cls?.combination?.electives }, subjects: cls?.subjects || [], scores: mongoScores } }); return; }
     const { studentId } = req.params;
     const result = findStudentById(studentId);
 
     if (!result) {
-      res.status(404).json({ success: false, message: '学生不存在' });
+      fail(res, 404, 'NOT_FOUND', '学生不存在');
       return;
     }
 
@@ -137,17 +171,19 @@ export const getStudentDetail = (req: Request, res: Response): void => {
       },
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: '获取学生详情失败' });
+    sendUnavailable(res, error, '获取学生详情失败');
   }
 };
 
-export const getStudentScoresHandler = (req: Request, res: Response): void => {
+export const getStudentScoresHandler = async (req: Request, res: Response): Promise<void> => {
   try {
+    const mongoScores = await mongoStudentScores(req.params.studentId);
+    if (mongoScores) { res.json({ success: true, data: { studentId: req.params.studentId, studentName: mongoScores[0]?.姓名, className: mongoScores[0]?.班级, scores: mongoScores } }); return; }
     const { studentId } = req.params;
     const result = findStudentById(studentId);
 
     if (!result) {
-      res.status(404).json({ success: false, message: '学生不存在' });
+      fail(res, 404, 'NOT_FOUND', '学生不存在');
       return;
     }
 
@@ -163,17 +199,19 @@ export const getStudentScoresHandler = (req: Request, res: Response): void => {
       },
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: '获取学生成绩失败' });
+    sendUnavailable(res, error, '获取学生成绩失败');
   }
 };
 
-export const getClassScoresHandler = (req: Request, res: Response): void => {
+export const getClassScoresHandler = async (req: Request, res: Response): Promise<void> => {
   try {
+    const mongo = await mongoClassScores(req.params.classId);
+    if (mongo) { const examScores: Record<string, ScoreRecord[]> = {}; mongo.scores.forEach(score => { (examScores[score.考试] ||= []).push(score as ScoreRecord); }); res.json({ success: true, data: { classId: req.params.classId, className: mongo.cls.name, examScores } }); return; }
     const { classId } = req.params;
     const cls = getClassById(classId);
 
     if (!cls) {
-      res.status(404).json({ success: false, message: '班级不存在' });
+      fail(res, 404, 'NOT_FOUND', '班级不存在');
       return;
     }
 
@@ -198,17 +236,19 @@ export const getClassScoresHandler = (req: Request, res: Response): void => {
       },
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: '获取班级成绩失败' });
+    sendUnavailable(res, error, '获取班级成绩失败');
   }
 };
 
-export const getClassAnalysis = (req: Request, res: Response): void => {
+export const getClassAnalysis = async (req: Request, res: Response): Promise<void> => {
   try {
+    const mongo = await mongoClassAnalysis(req.params.classId);
+    if (mongo) { res.json({ success: true, data: mongo }); return; }
     const { classId } = req.params;
     const cls = getClassById(classId);
 
     if (!cls) {
-      res.status(404).json({ success: false, message: '班级不存在' });
+      fail(res, 404, 'NOT_FOUND', '班级不存在');
       return;
     }
 
@@ -226,23 +266,28 @@ export const getClassAnalysis = (req: Request, res: Response): void => {
       const maxScore = Math.max(...totalScores);
       const minScore = Math.min(...totalScores);
 
-      const subjectAnalysis: Record<string, { avg: number; max: number; min: number }> = {};
+      const subjectAnalysis: Record<string, { avg: number; avgRate: number; max: number; min: number }> = {};
 
       cls.subjects.forEach(subject => {
         const subjectScores = examScores
           .map(s => {
             const scoreStr = s[subject] as string;
             if (!scoreStr) return null;
-            const [score] = scoreStr.split('/').map(Number);
-            return score;
+            const [score, fullScore] = scoreStr.split('/').map(Number);
+            return { score, fullScore };
           })
-          .filter((s): s is number => s !== null);
+          .filter((s): s is { score: number; fullScore: number } => s !== null && Number.isFinite(s.score) && s.fullScore > 0);
 
         if (subjectScores.length > 0) {
           subjectAnalysis[subject] = {
-            avg: Number((subjectScores.reduce((a, b) => a + b, 0) / subjectScores.length).toFixed(2)),
-            max: Math.max(...subjectScores),
-            min: Math.min(...subjectScores),
+            avg: Number((subjectScores.reduce((sum, item) => sum + item.score, 0) / subjectScores.length).toFixed(2)),
+            avgRate: Number((
+              subjectScores.reduce((sum, item) => sum + item.score / item.fullScore, 0) /
+              subjectScores.length *
+              100
+            ).toFixed(2)),
+            max: Math.max(...subjectScores.map(item => item.score)),
+            min: Math.min(...subjectScores.map(item => item.score)),
           };
         }
       });
@@ -266,44 +311,49 @@ export const getClassAnalysis = (req: Request, res: Response): void => {
       },
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: '获取班级分析失败' });
+    sendUnavailable(res, error, '获取班级分析失败');
   }
 };
 
-export const getExams = (req: Request, res: Response): void => {
+export const getExams = async (req: Request, res: Response): Promise<void> => {
   try {
+    const mongo = await mongoExams();
+    if (mongo) { res.json({ success: true, data: mongo }); return; }
     const exams = getAvailableExams();
     res.json({
       success: true,
       data: exams,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: '获取考试列表失败' });
+    sendUnavailable(res, error, '获取考试列表失败');
   }
 };
 
-export const getGradeDistribution = (req: Request, res: Response): void => {
+export const getGradeDistribution = async (req: Request, res: Response): Promise<void> => {
   try {
+    const mongo = await mongoDistribution(req.params.classId, typeof req.query.exam === 'string' ? req.query.exam : undefined);
+    if (mongo) { res.json({ success: true, data: mongo }); return; }
     const { classId } = req.params;
     const { exam } = req.query;
     const cls = getClassById(classId);
 
     if (!cls) {
-      res.status(404).json({ success: false, message: '班级不存在' });
+      fail(res, 404, 'NOT_FOUND', '班级不存在');
       return;
     }
 
     const scores = getClassScores(cls.name);
-    const examScores = exam
-      ? scores.filter(s => s.考试 === exam)
-      : scores.filter(s => s.考试 === '期末考试');
+    const selectedExam = typeof exam === 'string' ? exam : getLatestExam();
+    const examScores = selectedExam
+      ? scores.filter(s => s.考试 === selectedExam)
+      : [];
 
     if (examScores.length === 0) {
       res.json({
         success: true,
         data: {
           classId,
-          exam: exam || '期末考试',
+          exam: selectedExam,
           distribution: {},
         },
       });
@@ -340,30 +390,32 @@ export const getGradeDistribution = (req: Request, res: Response): void => {
       data: {
         classId,
         className: cls.name,
-        exam: exam || '期末考试',
+        exam: selectedExam,
         distribution: ranges,
         totalStudents: examScores.length,
       },
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: '获取成绩分布失败' });
+    sendUnavailable(res, error, '获取成绩分布失败');
   }
 };
 
-export const getProgressStudents = (req: Request, res: Response): void => {
+export const getProgressStudents = async (req: Request, res: Response): Promise<void> => {
   try {
+    const mongo = await mongoProgress(req.params.classId);
+    if (mongo) { res.json({ success: true, data: mongo }); return; }
     const { classId } = req.params;
     const cls = getClassById(classId);
 
     if (!cls) {
-      res.status(404).json({ success: false, message: '班级不存在' });
+      fail(res, 404, 'NOT_FOUND', '班级不存在');
       return;
     }
 
     const scores = getClassScores(cls.name);
     const studentProgress: Record<string, { name: string; progress: number; currentRank: number; previousRank: number }> = {};
 
-    const exams = ['月考1', '月考2', '月考3', '期中考试', '期末考试'];
+    const exams = getAvailableExams();
 
     cls.students.forEach(student => {
       const studentScores = scores.filter(s => s.学号 === student.id);
@@ -402,24 +454,38 @@ export const getProgressStudents = (req: Request, res: Response): void => {
       },
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: '获取进退步学生失败' });
+    sendUnavailable(res, error, '获取进退步学生失败');
   }
 };
 
 export const searchStudents = (req: Request, res: Response): void => {
   try {
+    requireMongoConnection();
     const { keyword } = req.query;
     if (!keyword || typeof keyword !== 'string') {
       res.status(400).json({ success: false, message: '请输入搜索关键词' });
       return;
     }
 
-    const classes = getAllClasses();
+    const allClasses = getAllClasses();
+    const user = req.user;
+    const classes = user?.role === 'admin'
+      ? allClasses
+      : user?.role === 'teacher'
+        ? allClasses.filter(c => c.id === findTeacherById(user.refId)?.classId)
+        : [];
     const results: Array<{ student: LocalStudent; classInfo: LocalClass }> = [];
 
     classes.forEach(cls => {
       cls.students.forEach(student => {
-        if (student.name.includes(keyword) || student.id.includes(keyword)) {
+        const canSeeStudent =
+          user?.role === 'admin' ||
+          (user?.role === 'teacher' &&
+            findTeacherById(user.refId)?.classId === cls.id);
+        const isSelfMatch = user?.role === 'student' && student.id === user.refId;
+
+        if ((canSeeStudent || isSelfMatch) &&
+          (student.name.includes(keyword) || student.id.includes(keyword))) {
           results.push({ student, classInfo: cls });
         }
       });
@@ -436,12 +502,13 @@ export const searchStudents = (req: Request, res: Response): void => {
       })),
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: '搜索学生失败' });
+    sendUnavailable(res, error, '搜索学生失败');
   }
 };
 
 export const getDashboardStats = (req: Request, res: Response): void => {
   try {
+    requireMongoConnection();
     const classes = getAllClasses();
     const teachers = getAllTeachers();
     const files = getAllGradeReportFiles();
@@ -468,6 +535,11 @@ export const getDashboardStats = (req: Request, res: Response): void => {
       },
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: '获取统计信息失败' });
+    sendUnavailable(res, error, '获取统计信息失败');
   }
 };
+
+
+
+
+

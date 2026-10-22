@@ -3,7 +3,13 @@ dist/
 .env
 .env.local
 .env.*.local
+auth_credentials.json
+online_exams.json
 *.log
 .DS_Store
 Thumbs.db
 .trae/
+
+
+.env.*
+MongoDB.env

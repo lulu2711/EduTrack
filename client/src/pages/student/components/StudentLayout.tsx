@@ -57,6 +57,9 @@ export default function StudentLayout({ children, title }: StudentLayoutProps) {
   };
 
   const menuItems = [
+    { path: '/student/forum', label: '学习论坛', icon: <TargetIcon /> },
+    { path: '/student/online-exams', label: '在线作业', icon: <TargetIcon /> },
+    { path: '/student/assistant', label: '智能问答', icon: <TargetIcon /> },
     { path: '/student/dashboard', label: '成绩查询', icon: <LayoutDashboardIcon /> },
     { path: '/student/trends', label: '趋势分析', icon: <TrendingUpIcon /> },
     { path: '/student/goals', label: '学习目标', icon: <TargetIcon /> },
@@ -107,6 +110,12 @@ export default function StudentLayout({ children, title }: StudentLayoutProps) {
                 </div>
               </div>
               <button
+                onClick={() => navigate('/student/change-password')}
+                className="text-sm text-gray-500 hover:text-amber-600"
+              >
+                修改密码
+              </button>
+              <button
                 onClick={handleLogout}
                 className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
               >
@@ -147,3 +156,5 @@ export default function StudentLayout({ children, title }: StudentLayoutProps) {
     </div>
   );
 }
+
+

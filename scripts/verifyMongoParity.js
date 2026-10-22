@@ -1,0 +1,6 @@
+require('dotenv').config({ path: require('path').resolve(__dirname, '../server/.env') });
+const fs = require('fs'); const path = require('path'); const mongoose = require('mongoose');
+const root = path.resolve(__dirname, '..');
+function localCounts() { const school=JSON.parse(fs.readFileSync(path.join(root,'school_data.json'),'utf8')); const reports=fs.readdirSync(path.join(root,'grade_subject_reports')).filter(x=>x.endsWith('.json')); return { classes: school.classes.length, students: school.classes.reduce((n,c)=>n+c.students.length,0), reports: reports.length }; }
+(async()=>{ await mongoose.connect(process.env.MONGODB_URI,{dbName:'edu-tracker',serverSelectionTimeoutMS:10000}); const db=mongoose.connection.db; const actual={classes:await db.collection('classes').countDocuments(),students:await db.collection('students').countDocuments(),teachers:await db.collection('teachers').countDocuments(),scores:await db.collection('scores').countDocuments(),exams:await db.collection('exams').countDocuments()}; const expected=localCounts(); console.log(JSON.stringify({expected,actual,checks:{classes:expected.classes===actual.classes,students:expected.students===actual.students,teachers:actual.teachers===15,scores:actual.scores===39810}},null,2)); await mongoose.disconnect(); })().catch(e=>{console.error(e);process.exit(1)});
+

@@ -84,7 +84,7 @@ export default function StudentDashboard() {
   };
 
   const getRankChange = (currentRank: number, examName: string) => {
-    const examOrder = ['月考1', '月考2', '月考3', '期中考试', '期末考试'];
+    const examOrder = studentInfo?.scores.map(score => score.考试) || [];
     const currentIndex = examOrder.indexOf(examName);
     if (currentIndex <= 0) return null;
 

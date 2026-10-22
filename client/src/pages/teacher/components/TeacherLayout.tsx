@@ -58,6 +58,9 @@ export default function TeacherLayout({ children, title }: TeacherLayoutProps) {
   };
 
   const menuItems = [
+    { path: '/teacher/forum', label: '学习论坛', icon: <TrendingUpIcon /> },
+    { path: '/teacher/online-exams', label: '在线作业', icon: <TrendingUpIcon /> },
+    { path: '/teacher/assistant', label: '智能问答', icon: <TrendingUpIcon /> },
     { path: '/teacher/dashboard', label: '班级分析', icon: <LayoutDashboardIcon /> },
     { path: '/teacher/students', label: '学生管理', icon: <UsersIcon /> },
     { path: '/teacher/progress', label: '进退步分析', icon: <TrendingUpIcon /> },
@@ -108,6 +111,12 @@ export default function TeacherLayout({ children, title }: TeacherLayoutProps) {
                 </div>
               </div>
               <button
+                onClick={() => navigate('/teacher/change-password')}
+                className="text-sm text-gray-500 hover:text-emerald-600"
+              >
+                修改密码
+              </button>
+              <button
                 onClick={handleLogout}
                 className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
               >
@@ -148,3 +157,5 @@ export default function TeacherLayout({ children, title }: TeacherLayoutProps) {
     </div>
   );
 }
+
+

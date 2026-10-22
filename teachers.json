@@ -6,7 +6,7 @@
       "classId": "c1",
       "className": "高一(1)班-物化生",
       "grade": "高一",
-      "password": "123456"
+      "password": "$2b$10$bsnJ2vQgk/tdvCercrWACutRuo46Ywa9j6hbX8hb/BxUGHq0sQwrG"
     },
     {
       "id": "t002",
@@ -14,7 +14,7 @@
       "classId": "c2",
       "className": "高一(2)班-物化地",
       "grade": "高一",
-      "password": "123456"
+      "password": "$2b$10$bsnJ2vQgk/tdvCercrWACutRuo46Ywa9j6hbX8hb/BxUGHq0sQwrG"
     },
     {
       "id": "t003",
@@ -22,7 +22,7 @@
       "classId": "c3",
       "className": "高一(3)班-物化政",
       "grade": "高一",
-      "password": "123456"
+      "password": "$2b$10$bsnJ2vQgk/tdvCercrWACutRuo46Ywa9j6hbX8hb/BxUGHq0sQwrG"
     },
     {
       "id": "t004",
@@ -30,7 +30,7 @@
       "classId": "c4",
       "className": "高一(4)班-历政地",
       "grade": "高一",
-      "password": "123456"
+      "password": "$2b$10$bsnJ2vQgk/tdvCercrWACutRuo46Ywa9j6hbX8hb/BxUGHq0sQwrG"
     },
     {
       "id": "t005",
@@ -38,7 +38,7 @@
       "classId": "c5",
       "className": "高一(5)班-历政生",
       "grade": "高一",
-      "password": "123456"
+      "password": "$2b$10$bsnJ2vQgk/tdvCercrWACutRuo46Ywa9j6hbX8hb/BxUGHq0sQwrG"
     },
     {
       "id": "t006",
@@ -46,7 +46,7 @@
       "classId": "c6",
       "className": "高二(1)班-物化生",
       "grade": "高二",
-      "password": "123456"
+      "password": "$2b$10$bsnJ2vQgk/tdvCercrWACutRuo46Ywa9j6hbX8hb/BxUGHq0sQwrG"
     },
     {
       "id": "t007",
@@ -54,7 +54,7 @@
       "classId": "c7",
       "className": "高二(2)班-物化地",
       "grade": "高二",
-      "password": "123456"
+      "password": "$2b$10$bsnJ2vQgk/tdvCercrWACutRuo46Ywa9j6hbX8hb/BxUGHq0sQwrG"
     },
     {
       "id": "t008",
@@ -62,7 +62,7 @@
       "classId": "c8",
       "className": "高二(3)班-物化政",
       "grade": "高二",
-      "password": "123456"
+      "password": "$2b$10$bsnJ2vQgk/tdvCercrWACutRuo46Ywa9j6hbX8hb/BxUGHq0sQwrG"
     },
     {
       "id": "t009",
@@ -70,7 +70,7 @@
       "classId": "c9",
       "className": "高二(4)班-历政地",
       "grade": "高二",
-      "password": "123456"
+      "password": "$2b$10$bsnJ2vQgk/tdvCercrWACutRuo46Ywa9j6hbX8hb/BxUGHq0sQwrG"
     },
     {
       "id": "t010",
@@ -78,7 +78,7 @@
       "classId": "c10",
       "className": "高二(5)班-历政生",
       "grade": "高二",
-      "password": "123456"
+      "password": "$2b$10$bsnJ2vQgk/tdvCercrWACutRuo46Ywa9j6hbX8hb/BxUGHq0sQwrG"
     },
     {
       "id": "t011",
@@ -86,7 +86,7 @@
       "classId": "c11",
       "className": "高三(1)班-物化生",
       "grade": "高三",
-      "password": "123456"
+      "password": "$2b$10$bsnJ2vQgk/tdvCercrWACutRuo46Ywa9j6hbX8hb/BxUGHq0sQwrG"
     },
     {
       "id": "t012",
@@ -94,7 +94,7 @@
       "classId": "c12",
       "className": "高三(2)班-物化地",
       "grade": "高三",
-      "password": "123456"
+      "password": "$2b$10$bsnJ2vQgk/tdvCercrWACutRuo46Ywa9j6hbX8hb/BxUGHq0sQwrG"
     },
     {
       "id": "t013",
@@ -102,7 +102,7 @@
       "classId": "c13",
       "className": "高三(3)班-物化政",
       "grade": "高三",
-      "password": "123456"
+      "password": "$2b$10$bsnJ2vQgk/tdvCercrWACutRuo46Ywa9j6hbX8hb/BxUGHq0sQwrG"
     },
     {
       "id": "t014",
@@ -110,7 +110,7 @@
       "classId": "c14",
       "className": "高三(4)班-历政地",
       "grade": "高三",
-      "password": "123456"
+      "password": "$2b$10$bsnJ2vQgk/tdvCercrWACutRuo46Ywa9j6hbX8hb/BxUGHq0sQwrG"
     },
     {
       "id": "t015",
@@ -118,7 +118,7 @@
       "classId": "c15",
       "className": "高三(5)班-历政生",
       "grade": "高三",
-      "password": "123456"
+      "password": "$2b$10$bsnJ2vQgk/tdvCercrWACutRuo46Ywa9j6hbX8hb/BxUGHq0sQwrG"
     }
   ]
 }

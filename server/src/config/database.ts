@@ -1,50 +1,35 @@
 import mongoose from 'mongoose';
+import { getDataSourceMode } from '../utils/dataSource';
 
 let isConnected = false;
+let listenersAttached = false;
+const log = (event: string, details: Record<string, unknown> = {}) => console.log(JSON.stringify({ event, timestamp: new Date().toISOString(), ...details }));
+
+const attachListeners = () => {
+  if (listenersAttached) return;
+  listenersAttached = true;
+  mongoose.connection.on('connected', () => { isConnected = true; log('mongodb.connected', { database: mongoose.connection.name, mode: getDataSourceMode() }); });
+  mongoose.connection.on('reconnected', () => { isConnected = true; log('mongodb.reconnected', { database: mongoose.connection.name }); });
+  mongoose.connection.on('error', (error) => { log('mongodb.error', { message: error.message, mode: getDataSourceMode() }); });
+  mongoose.connection.on('disconnected', () => { isConnected = false; log('mongodb.disconnected', { mode: getDataSourceMode() }); });
+};
 
 const connectDB = async (): Promise<void> => {
+  attachListeners();
+  const mongoURI = process.env.MONGODB_URI;
+  if (!mongoURI) { log('mongodb.skipped', { reason: 'MONGODB_URI missing', mode: getDataSourceMode() }); return; }
+  if (isConnected || mongoose.connection.readyState === 1) { isConnected = true; log('mongodb.reused', { database: mongoose.connection.name }); return; }
   try {
-    const mongoURI = process.env.MONGODB_URI;
-    
-    if (!mongoURI) {
-      console.warn('⚠️ MONGODB_URI not found, running without database');
-      return;
-    }
-
-    // 如果已经连接，直接返回
-    if (isConnected) {
-      console.log('✅ Using existing MongoDB connection');
-      return;
-    }
-
-    const conn = await mongoose.connect(mongoURI, { dbName: 'edu-tracker' });
+    const conn = await mongoose.connect(mongoURI, { dbName: 'edu-tracker', serverSelectionTimeoutMS: 10000, maxPoolSize: 10 });
     isConnected = true;
-    
-    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
-    console.log(`📊 Database: ${conn.connection.name}`);
-    
-    // 监听连接事件
-    mongoose.connection.on('error', (err) => {
-      console.error('❌ MongoDB connection error:', err);
-    });
-
-    mongoose.connection.on('disconnected', () => {
-      console.log('⚠️ MongoDB disconnected');
-      isConnected = false;
-    });
-
-    // 优雅关闭
-    process.on('SIGINT', async () => {
-      await mongoose.connection.close();
-      console.log('👋 MongoDB connection closed through app termination');
-      process.exit(0);
-    });
-
   } catch (error) {
-    console.warn('⚠️ Database connection failed, running in mock mode:', (error as Error).message);
-    console.log('💡 Tip: Install MongoDB locally or use MongoDB Atlas for full functionality');
-    // 不退出进程，允许服务继续运行（使用 mock 数据）
+    isConnected = false;
+    log('mongodb.connection_failed', { message: (error as Error).message, mode: getDataSourceMode(), fallbackEnabled: getDataSourceMode() !== 'mongodb' });
   }
 };
 
+process.once('SIGINT', async () => { if (mongoose.connection.readyState !== 0) await mongoose.connection.close(); log('mongodb.closed', { reason: 'SIGINT' }); process.exit(0); });
+process.once('SIGTERM', async () => { if (mongoose.connection.readyState !== 0) await mongoose.connection.close(); log('mongodb.closed', { reason: 'SIGTERM' }); process.exit(0); });
+
 export default connectDB;
+

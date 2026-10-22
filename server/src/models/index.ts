@@ -7,3 +7,7 @@ export { default as Exam } from './Exam';
 export { default as Score } from './Score';
 export { default as Announcement } from './Announcement';
 export { default as School } from './School';
+
+export { default as ForumPost } from './ForumPost';
+export { default as OnlineExam } from './OnlineExam';
+

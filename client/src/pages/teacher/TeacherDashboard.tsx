@@ -63,10 +63,17 @@ interface ClassAnalysis {
     lowestScore: number;
     subjectAnalysis: Record<string, {
       avg: number;
+      avgRate: number;
       max: number;
       min: number;
     }>;
   }>;
+}
+
+interface GradeDistribution {
+  distribution: Record<string, number>;
+  totalStudents: number;
+  exam: string;
 }
 
 interface ProgressStudent {
@@ -87,8 +94,9 @@ export default function TeacherDashboard() {
   const { user } = useAuthStore();
   const [analysis, setAnalysis] = useState<ClassAnalysis | null>(null);
   const [progressData, setProgressData] = useState<ProgressData | null>(null);
+  const [gradeDistribution, setGradeDistribution] = useState<GradeDistribution | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedExam, setSelectedExam] = useState<string>('期末考试');
+  const [selectedExam, setSelectedExam] = useState<string>('');
   
   const scoreDistChartRef = useRef<HTMLDivElement>(null);
   const subjectChartRef = useRef<HTMLDivElement>(null);
@@ -96,23 +104,31 @@ export default function TeacherDashboard() {
   const loadData = useCallback(async () => {
     if (!user?.classId) return;
     try {
-      const [analysisRes, progressRes] = await Promise.all([
+      const [analysisRes, progressRes, distributionRes] = await Promise.all([
         api.getClassAnalysis(user.classId),
-        api.getClassProgress(user.classId)
+        api.getClassProgress(user.classId),
+        api.getClassDistribution(user.classId, selectedExam),
       ]);
       
       if (analysisRes.success) {
         setAnalysis(analysisRes.data);
+        const availableExams = Object.keys(analysisRes.data.analysis || {});
+        if (!selectedExam || !availableExams.includes(selectedExam)) {
+          setSelectedExam(availableExams[availableExams.length - 1] || '');
+        }
       }
       if (progressRes.success) {
         setProgressData(progressRes.data);
+      }
+      if (distributionRes.success) {
+        setGradeDistribution(distributionRes.data);
       }
     } catch (error) {
       console.error('加载数据失败:', error);
     } finally {
       setLoading(false);
     }
-  }, [user?.classId]);
+  }, [user?.classId, selectedExam]);
 
   useEffect(() => {
     loadData();
@@ -126,11 +142,15 @@ export default function TeacherDashboard() {
 
     if (scoreDistChartRef.current) {
       const chart = getOrCreateChart(scoreDistChartRef.current);
-      const ranges = ['400-', '400-449', '450-499', '500-549', '550-599', '600-649', '650+'];
-      const counts = [2, 5, 8, 12, 10, 8, 5];
+      const ranges = Object.keys(gradeDistribution?.distribution || {});
+      const counts = ranges.map(range => gradeDistribution?.distribution[range] || 0);
       
       chart.setOption({
-        tooltip: { trigger: 'axis' },
+        tooltip: {
+          trigger: 'axis',
+          formatter: (params: { name: string; value: number }[]) =>
+            `${params[0].name}<br/>人数: ${params[0].value}人`,
+        },
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: {
           type: 'category',
@@ -163,10 +183,14 @@ export default function TeacherDashboard() {
     if (subjectChartRef.current && examData.subjectAnalysis) {
       const chart = getOrCreateChart(subjectChartRef.current);
       const subjects = Object.keys(examData.subjectAnalysis);
-      const avgs = subjects.map(s => examData.subjectAnalysis[s].avg);
+      const avgs = subjects.map(s => examData.subjectAnalysis[s].avgRate);
       
       chart.setOption({
-        tooltip: { trigger: 'axis' },
+        tooltip: {
+          trigger: 'axis',
+          formatter: (params: { name: string; value: number }[]) =>
+            `${params[0].name}<br/>平均得分率: ${params[0].value}%`,
+        },
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: {
           type: 'category',
@@ -196,7 +220,7 @@ export default function TeacherDashboard() {
         }]
       });
     }
-  }, [analysis, selectedExam]);
+  }, [analysis, selectedExam, gradeDistribution]);
 
   useEffect(() => {
     if (analysis && !loading) {

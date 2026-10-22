@@ -54,7 +54,7 @@ export default function LoginPage() {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-    name: '',
+    employeeId: '',
     studentId: '',
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -72,7 +72,7 @@ export default function LoginPage() {
     if (role === 'admin') {
       credentials = { username: formData.username, password: formData.password };
     } else if (role === 'teacher') {
-      credentials = { name: formData.name, password: formData.password };
+      credentials = { employeeId: formData.employeeId, password: formData.password };
     } else {
       credentials = { studentId: formData.studentId, password: formData.password };
     }
@@ -163,7 +163,7 @@ export default function LoginPage() {
               {role === 'teacher' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    姓名
+                    工号
                   </label>
                   <div className="relative">
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
@@ -171,10 +171,10 @@ export default function LoginPage() {
                     </div>
                     <input
                       type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      value={formData.employeeId}
+                      onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
                       className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 transition-all outline-none"
-                      placeholder="请输入教师姓名"
+                      placeholder="请输入教师工号，如 t001"
                       required
                     />
                   </div>
@@ -248,10 +248,10 @@ export default function LoginPage() {
                 <p className="text-sm text-gray-700">账号: admin | 密码: admin123</p>
               )}
               {role === 'teacher' && (
-                <p className="text-sm text-gray-700">姓名: 梁浩然 | 密码: 123456</p>
+                <p className="text-sm text-gray-700">教师账号: t001 | 密码: 123456</p>
               )}
               {role === 'student' && (
-                <p className="text-sm text-gray-700">学号: 10101 | 密码: 学号后6位或123456</p>
+                <p className="text-sm text-gray-700">学号: 11953 | 密码: 123456</p>
               )}
             </div>
           </div>
@@ -260,3 +260,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+

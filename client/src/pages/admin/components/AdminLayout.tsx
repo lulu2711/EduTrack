@@ -68,10 +68,12 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
   };
 
   const menuItems = [
+    { path: '/admin/forum', label: '论坛审核', icon: <FileTextIcon /> },
     { path: '/admin/dashboard', label: '仪表盘', icon: <LayoutDashboardIcon /> },
     { path: '/admin/classes', label: '班级管理', icon: <BookOpenIcon /> },
     { path: '/admin/teachers', label: '教师管理', icon: <UsersIcon /> },
     { path: '/admin/exams', label: '考试管理', icon: <FileTextIcon /> },
+    { path: '/admin/assistant', label: '智能问答', icon: <FileTextIcon /> },
   ];
 
   return (
@@ -124,6 +126,12 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
             </div>
           </div>
           <button
+            onClick={() => navigate('/admin/change-password')}
+            className="w-full mb-2 rounded-xl px-4 py-2 text-sm text-gray-600 hover:bg-violet-50 hover:text-violet-600 transition-colors"
+          >
+            修改密码
+          </button>
+          <button
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-gray-600 hover:bg-gray-100 transition-colors"
           >
@@ -148,3 +156,5 @@ export default function AdminLayout({ children, title }: AdminLayoutProps) {
     </div>
   );
 }
+
+

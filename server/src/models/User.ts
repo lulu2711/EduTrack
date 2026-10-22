@@ -69,7 +69,8 @@ UserSchema.methods.comparePassword = async function (
 };
 
 // 索引
-UserSchema.index({ username: 1 }, { unique: true });
 UserSchema.index({ role: 1, refId: 1 });
 
 export default mongoose.model<IUser>('User', UserSchema);
+
+

@@ -11,11 +11,15 @@ import ImportPage from './pages/admin/ImportPage'
 import TeacherDashboard from './pages/teacher/TeacherDashboard'
 import StudentsPage from './pages/teacher/StudentsPage'
 import ProgressPage from './pages/teacher/ProgressPage'
+import TeacherOnlineExamsPage from './pages/teacher/OnlineExamsPage'
 import StudentDashboard from './pages/student/StudentDashboard'
 import TrendsPage from './pages/student/TrendsPage'
 import GoalsPage from './pages/student/GoalsPage'
+import StudentOnlineExamsPage from './pages/student/OnlineExamsPage'
 import NotFoundPage from './pages/error/NotFoundPage'
-
+import ChangePasswordPage from './pages/auth/ChangePasswordPage'
+import AssistantPage from './pages/assistant/AssistantPage'
+import ForumPage from './pages/forum/ForumPage'
 // 受保护路由组件
 function ProtectedRoute({ children, allowedRole }: { children: React.ReactNode; allowedRole: string }) {
   const { user, isAuthenticated, isLoading } = useAuthStore()
@@ -54,6 +58,12 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/:role/change-password"
+          element={
+            <ChangePasswordPage />
+          }
+        />
         <Route
           path="/admin/dashboard"
           element={
@@ -94,6 +104,8 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/admin/assistant" element={<ProtectedRoute allowedRole="admin"><AssistantPage /></ProtectedRoute>} />
+        <Route path="/admin/forum" element={<ProtectedRoute allowedRole="admin"><ForumPage /></ProtectedRoute>} />
         <Route
           path="/teacher/dashboard"
           element={
@@ -119,6 +131,16 @@ function App() {
           }
         />
         <Route
+          path="/teacher/online-exams"
+          element={
+            <ProtectedRoute allowedRole="teacher">
+              <TeacherOnlineExamsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/teacher/assistant" element={<ProtectedRoute allowedRole="teacher"><AssistantPage /></ProtectedRoute>} />
+        <Route path="/teacher/forum" element={<ProtectedRoute allowedRole="teacher"><ForumPage /></ProtectedRoute>} />
+        <Route
           path="/student/dashboard"
           element={
             <ProtectedRoute allowedRole="student">
@@ -126,6 +148,8 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/student/assistant" element={<ProtectedRoute allowedRole="student"><AssistantPage /></ProtectedRoute>} />
+        <Route path="/student/forum" element={<ProtectedRoute allowedRole="student"><ForumPage /></ProtectedRoute>} />
         <Route
           path="/student/trends"
           element={
@@ -142,6 +166,14 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/student/online-exams"
+          element={
+            <ProtectedRoute allowedRole="student">
+              <StudentOnlineExamsPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
@@ -149,3 +181,9 @@ function App() {
 }
 
 export default App
+
+
+
+
+
+

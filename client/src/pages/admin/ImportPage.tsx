@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import AdminLayout from './components/AdminLayout';
+import { api } from '../../services/api';
 
 // Icons
 const UploadIcon = () => (
@@ -34,22 +35,54 @@ const InfoIcon = () => (
 
 export default function ImportPage() {
   const [importing, setImporting] = useState(false);
+  const [stats, setStats] = useState<{
+    totalClasses: number;
+    totalStudents: number;
+    totalTeachers: number;
+    totalExams: number;
+  } | null>(null);
   const [importResult, setImportResult] = useState<{
     success: boolean;
     message: string;
   } | null>(null);
 
-  const handleImport = (type: string) => {
+  const loadStats = async () => {
+    try {
+      const response = await api.getDashboardStats();
+      if (response.success) {
+        setStats(response.data);
+      }
+    } catch (error) {
+      setImportResult({
+        success: false,
+        message: error instanceof Error ? error.message : '统计数据加载失败',
+      });
+    }
+  };
+
+  useEffect(() => {
+    void loadStats();
+  }, []);
+
+  const handleImport = async (type: string) => {
     setImporting(true);
     setImportResult(null);
 
-    setTimeout(() => {
+    try {
+      const response = await api.reloadLocalData();
+      await loadStats();
       setImporting(false);
       setImportResult({
         success: true,
-        message: `${type}数据已从本地文件加载完成`,
+        message: `数据已重新加载：${response.data.classCount} 个班级、${response.data.studentCount} 名学生、${response.data.teacherCount} 名教师、${response.data.gradeReportFiles} 个成绩文件`,
       });
-    }, 1500);
+    } catch (error) {
+      setImporting(false);
+      setImportResult({
+        success: false,
+        message: error instanceof Error ? error.message : '数据加载失败，请稍后重试',
+      });
+    }
   };
 
   return (
@@ -64,12 +97,13 @@ export default function ImportPage() {
             <div>
               <h4 className="font-medium text-violet-900 mb-2">当前数据模式</h4>
               <p className="text-sm text-violet-800">
-                系统当前使用本地 JSON 文件作为数据源。以下数据已自动加载：
+                当前版本使用项目内置 JSON 数据。点击任一按钮会让服务端重新读取并校验全部数据：
               </p>
               <ul className="text-sm text-violet-700 mt-2 space-y-1">
-                <li>• school_data.json - 学校班级和学生数据（60个班级，3322名学生）</li>
-                <li>• teachers.json - 教师账号数据（15名教师）</li>
-                <li>• grade_subject_reports/*.json - 144个成绩报告文件</li>
+                <li>• 班级数量：{stats?.totalClasses ?? '加载中...'}</li>
+                <li>• 学生数量：{stats?.totalStudents ?? '加载中...'}</li>
+                <li>• 教师数量：{stats?.totalTeachers ?? '加载中...'}</li>
+                <li>• 成绩文件数量：{stats?.totalExams ?? '加载中...'}</li>
               </ul>
             </div>
           </div>
@@ -173,18 +207,18 @@ export default function ImportPage() {
           </div>
         )}
 
-        {/* Upload Area (Future Feature) */}
+        {/* Upload Area */}
         <div className="bg-white rounded-2xl shadow-sm p-8">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">上传新数据</h3>
           <div className="border-2 border-dashed border-gray-200 rounded-2xl p-12 text-center hover:border-violet-300 transition-colors cursor-pointer">
             <div className="text-gray-300 mb-4 flex justify-center">
               <UploadIcon />
             </div>
-            <p className="text-gray-500 mb-2">拖拽文件到此处或点击上传</p>
-            <p className="text-sm text-gray-400">支持 JSON、CSV 格式文件</p>
+            <p className="text-gray-500 mb-2">文件上传导入尚未启用</p>
+            <p className="text-sm text-gray-400">当前仅支持重新加载项目内置 JSON 数据</p>
           </div>
           <p className="text-xs text-gray-400 mt-3 text-center">
-            此功能将在后续版本中支持，当前数据已从本地文件自动加载
+            不支持的上传操作不会显示为已完成。
           </p>
         </div>
       </div>

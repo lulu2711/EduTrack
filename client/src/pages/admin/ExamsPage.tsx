@@ -143,8 +143,6 @@ export default function ExamsPage() {
     }
   };
 
-  const examOrder = ['月考1', '月考2', '月考3', '期中考试', '期末考试'];
-
   const gradeGroups = classes.reduce((acc, cls) => {
     if (!acc[cls.grade]) acc[cls.grade] = [];
     acc[cls.grade].push(cls);
@@ -168,8 +166,8 @@ export default function ExamsPage() {
         <div className="bg-white rounded-2xl shadow-sm p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">考试列表</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-            {examOrder.map((exam) => {
-              const available = exams.includes(exam);
+            {exams.map((exam) => {
+              const available = true;
               return (
                 <button
                   key={exam}
