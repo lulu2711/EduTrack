@@ -10,10 +10,9 @@ import onlineExamRoutes from './routes/onlineExam.routes';
 import assistantRoutes from './routes/assistant.routes';
 import forumRoutes from './routes/forum.routes';
 import { fail, getDataSourceStatus } from './utils/dataSource';
+import { validateEnvironment } from './config/environment';
 
-if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
-  throw new Error('JWT_SECRET is required and must be at least 32 characters long');
-}
+validateEnvironment();
 
 const app = express();
 const PORT = process.env.PORT || 3000;

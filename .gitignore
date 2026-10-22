@@ -16,3 +16,7 @@ MongoDB.env
 
 server/.npm-cache/
 server/tsconfig.tsbuildinfo
+
+server/.env.production
+
+!server/.env.production.example
