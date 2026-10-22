@@ -13,3 +13,6 @@ Thumbs.db
 
 .env.*
 MongoDB.env
+
+server/.npm-cache/
+server/tsconfig.tsbuildinfo
