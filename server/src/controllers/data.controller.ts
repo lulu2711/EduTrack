@@ -463,7 +463,7 @@ export const searchStudents = (req: Request, res: Response): void => {
     requireMongoConnection();
     const { keyword } = req.query;
     if (!keyword || typeof keyword !== 'string') {
-      res.status(400).json({ success: false, message: '请输入搜索关键词' });
+      fail(res, 400, 'INVALID_INPUT', '请输入搜索关键词');
       return;
     }
 

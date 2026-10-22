@@ -9,7 +9,7 @@ import dataRoutes from './routes/data.routes';
 import onlineExamRoutes from './routes/onlineExam.routes';
 import assistantRoutes from './routes/assistant.routes';
 import forumRoutes from './routes/forum.routes';
-import { getDataSourceStatus } from './utils/dataSource';
+import { fail, getDataSourceStatus } from './utils/dataSource';
 
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
   throw new Error('JWT_SECRET is required and must be at least 32 characters long');
@@ -55,10 +55,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (err instanceof SyntaxError && 'body' in err) {
-    res.status(400).json({
-      success: false,
-      error: { code: 'INVALID_JSON', message: '请求体不是有效的 JSON', details: [] },
-    });
+    fail(res, 400, 'INVALID_JSON', '请求体不是有效的 JSON');
     return;
   }
   next(err);
@@ -98,18 +95,12 @@ app.use('/api/v1/forum', forumRoutes);
 // 错误处理
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error(err.stack);
-  if (typeof err?.statusCode === 'number') { res.status(err.statusCode).json({ success: false, error: { code: err.code || 'REQUEST_FAILED', message: err.message } }); return; }
+  if (typeof err?.statusCode === 'number') { fail(res, err.statusCode, err.code || 'REQUEST_FAILED', err.message || '请求失败'); return; }
   if (err instanceof SyntaxError && 'body' in err) {
-    res.status(400).json({
-      success: false,
-      error: { code: 'INVALID_JSON', message: '请求体不是有效的 JSON', details: [] },
-    });
+    fail(res, 400, 'INVALID_JSON', '请求体不是有效的 JSON');
     return;
   }
-  res.status(500).json({ 
-    success: false, 
-    error: { code: 'INTERNAL_ERROR', message: '服务器内部错误' } 
-  });
+  fail(res, 500, 'INTERNAL_ERROR', '服务器内部错误');
 });
 
 const server = app.listen(PORT, () => {

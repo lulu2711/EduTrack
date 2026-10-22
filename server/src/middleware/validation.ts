@@ -14,10 +14,7 @@ export const validate = (
     if (message) details.push({ field, message });
   });
   if (details.length > 0) {
-    res.status(400).json({
-      success: false,
-      error: { code: 'INVALID_INPUT', message: '请求参数不正确', details },
-    });
+    res.status(400).json({ success: false, error: { code: 'INVALID_INPUT', message: '请求参数不正确', details } });
     return;
   }
   next();

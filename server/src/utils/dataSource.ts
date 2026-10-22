@@ -27,3 +27,13 @@ export function fail(
 ): void {
   res.status(status).json({ success: false, error: { code, message, details } });
 }
+
+export function sendError(
+  res: import('express').Response,
+  status: number,
+  code: string,
+  message: string,
+  details: unknown[] = [],
+): void {
+  fail(res, status, code, message, details);
+}
