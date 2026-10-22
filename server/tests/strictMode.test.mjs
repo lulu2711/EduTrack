@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import 'dotenv/config';
 
 // Simulate strict MongoDB mode with no reachable database.
@@ -6,6 +9,13 @@ process.env.DATA_SOURCE_MODE = 'mongodb';
 delete process.env.MONGODB_URI;
 process.env.JWT_SECRET ||= 'test-secret-test-secret-test-secret-32';
 process.env.CORS_ORIGIN ||= 'http://localhost:5173';
+
+const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'edutrack-strict-'));
+for (const file of ['school_data.json', 'teachers.json', 'auth_credentials.json', 'forum_data.json', 'online_exams.json']) {
+  fs.copyFileSync(path.join(process.cwd(), '..', file), path.join(tempDir, file));
+}
+fs.cpSync(path.join(process.cwd(), '..', 'grade_subject_reports'), path.join(tempDir, 'grade_subject_reports'), { recursive: true });
+process.env.DATA_DIR = tempDir;
 
 const request = (await import('supertest')).default;
 const mod = await import('../dist/index.js');
@@ -26,4 +36,6 @@ assert.equal(dataRes.body.error.code, 'DATA_SOURCE_UNAVAILABLE');
 assert.equal(dataRes.body.success, false);
 
 console.log('✅ strict mode passed (503, no JSON fallback)');
+await new Promise(resolve => mod.httpServer.close(resolve));
+fs.rmSync(tempDir, { recursive: true, force: true });
 process.exit(0);

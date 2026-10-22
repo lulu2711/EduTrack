@@ -1,11 +1,20 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import 'dotenv/config';
 
 process.env.DATA_SOURCE_MODE = process.env.DATA_SOURCE_TEST_MODE || 'fallback';
 process.env.JWT_SECRET ||= 'test-secret-test-secret-test-secret-32';
 process.env.CORS_ORIGIN ||= 'http://localhost:5173';
 delete process.env.MONGODB_URI; // force local JSON fallback for deterministic regression
+
+const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'edutrack-regression-'));
+for (const file of ['school_data.json', 'teachers.json', 'auth_credentials.json', 'forum_data.json', 'online_exams.json']) {
+  fs.copyFileSync(path.join(process.cwd(), '..', file), path.join(tempDir, file));
+}
+fs.cpSync(path.join(process.cwd(), '..', 'grade_subject_reports'), path.join(tempDir, 'grade_subject_reports'), { recursive: true });
+process.env.DATA_DIR = tempDir;
 
 const request = (await import('supertest')).default;
 const mod = await import('../dist/index.js');
@@ -111,4 +120,6 @@ assert.equal((await request(app).get('/api/v1/data/classes')).status, 401);
 }
 
 console.log('✅ API regression passed');
+await new Promise(resolve => mod.httpServer.close(resolve));
+fs.rmSync(tempDir, { recursive: true, force: true });
 process.exit(0);
