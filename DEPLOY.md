@@ -1,253 +1,133 @@
-# EduTrack 部署指南
+# EduTrack 部署前准备指南
 
-## 项目概述
+## 当前状态
 
-EduTrack 是一个智能成绩管理与分析系统，包含以下功能模块：
-- 学生端：成绩查询、趋势分析、学习目标
-- 教师端：班级分析、学生管理、进退步分析
-- 管理员端：班级管理、教师管理、数据概览
+EduTrack 已完成本地 fallback 模式回归和真实 MongoDB 严格模式业务回归。当前建议先完成部署候选版本验收，再执行实际上线。
 
-## 技术栈
+## 技术架构
 
-- **前端**: React 18 + TypeScript + Vite + Tailwind CSS + ECharts
-- **后端**: Express + TypeScript + JWT
-- **数据**: 本地 JSON 文件（当前版本）
+- 前端：React + TypeScript + Vite，构建产物为 `client/dist`
+- 后端：Express + TypeScript，构建产物为 `server/dist`
+- 数据库：MongoDB Atlas
+- 生产数据源：`DATA_SOURCE_MODE=mongodb`
+- 认证：JWT
 
-## 本地开发
-
-### 1. 安装依赖
+## 本地验证
 
 ```bash
-# 安装后端依赖
 cd server
-npm install
+npm test
+npm run test:mongo
 
-# 安装前端依赖
 cd ../client
-npm install
-```
-
-### 2. 启动开发服务器
-
-```bash
-# 启动后端（端口 3000）
-cd server
-npm run dev
-
-# 启动前端（端口 5173）
-cd client
-npm run dev
-```
-
-### 3. 访问应用
-
-- 前端: http://localhost:5173
-- 后端 API: http://localhost:3000
-
-## 生产部署
-
-### 方式一：静态文件部署（推荐）
-
-#### 1. 构建前端
-
-```bash
-cd client
 npm run build
 ```
 
-构建后的文件位于 `client/dist` 目录。
+说明：
 
-#### 2. 部署后端
+- `npm test` 只运行本地临时数据回归和严格模式不可用测试，不连接真实 MongoDB。
+- `npm run test:mongo` 会连接 `server/.env` 中的 MongoDB，写入带 `strict-regression-` 前缀的临时论坛和考试记录，完成后自动清理。不要对生产数据库执行，建议使用验收数据库。
+- `client/npm run build` 生成 `client/dist`。
 
-```bash
-cd server
-npm run build
-npm start
-```
+## 生产环境变量
 
-#### 3. 配置 Nginx（可选）
-
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-
-    # 前端静态文件
-    location / {
-        root /path/to/client/dist;
-        index index.html;
-        try_files $uri $uri/ /index.html;
-    }
-
-    # 后端 API 代理
-    location /api/ {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-### 方式二：Docker 部署
-
-#### 1. 创建 Dockerfile（后端）
-
-```dockerfile
-# server/Dockerfile
-FROM node:18-alpine
-
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm ci --only=production
-
-COPY . .
-RUN npm run build
-
-EXPOSE 3000
-
-CMD ["node", "dist/index.js"]
-```
-
-#### 2. 创建 Dockerfile（前端）
-
-```dockerfile
-# client/Dockerfile
-FROM node:18-alpine AS builder
-
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-
-COPY . .
-RUN npm run build
-
-FROM nginx:alpine
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-EXPOSE 80
-```
-
-#### 3. 创建 docker-compose.yml
-
-```yaml
-version: '3.8'
-
-services:
-  backend:
-    build: ./server
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - PORT=3000
-      - JWT_SECRET=your-secret-key
-    volumes:
-      - ./data:/app/data  # 挂载数据目录
-
-  frontend:
-    build: ./client
-    ports:
-      - "80:80"
-    depends_on:
-      - backend
-```
-
-#### 4. 启动服务
-
-```bash
-docker-compose up -d
-```
-
-## 环境变量
-
-### 后端 (.env)
+不要把真实值提交到 Git。参考模板：`server/.env.production.example`。
 
 ```env
 NODE_ENV=production
 PORT=3000
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+DATA_SOURCE_MODE=mongodb
+MONGODB_URI=<rotated-mongodb-uri>
+JWT_SECRET=<new-random-secret-at-least-32-characters>
 JWT_EXPIRES_IN=7d
-DATA_DIR=/app/data
+CORS_ORIGIN=https://your-frontend-domain.example.com
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=<long-unique-password>
+STUDENT_DEMO_PASSWORD=<separate-demo-password>
+DATA_DIR=<persistent-data-directory-if-needed>
 ```
 
-`DATA_DIR` 用于指定 `school_data.json`、`teachers.json`、`grade_subject_reports/` 和运行时凭据文件所在目录。开发环境可以留空并使用项目数据目录；部署环境建议显式配置为持久化目录。
-
-### 前端 (.env.production)
+如启用智能助手，以下变量必须全部配置；不启用时全部留空：
 
 ```env
-VITE_API_URL=http://your-domain.com/api/v1
+LLM_BASE_URL=
+LLM_API_KEY=
+LLM_MODEL=
 ```
 
-## 数据备份
+生产启动时会自动校验配置。缺少必需变量、使用 localhost CORS、使用 fallback 数据源、JWT Secret 过短或管理员密码过弱，服务会拒绝启动。
 
-当前版本使用本地 JSON 文件存储数据，建议定期备份以下目录：
-- `grade_subject_reports/` - 成绩数据
-- `school_data.json` - 学校班级数据
-- `teachers.json` - 教师数据
-
-## 测试账号
-
-### 管理员
-- 账号: admin
-- 密码: admin123
-
-### 教师
-- 姓名: 梁浩然
-- 密码: 123456
-
-### 学生
-- 学号: 11953
-- 密码: 123456
-
-## 常见问题
-
-### 1. 端口被占用
+## 静态前端部署
 
 ```bash
-# Windows
-netstat -ano | findstr :3000
-taskkill /PID <PID> /F
-
-# Linux/Mac
-lsof -i :3000
-kill -9 <PID>
+cd client
+npm run build
 ```
 
-### 2. 构建失败
+将 `client/dist` 部署到静态托管平台或 Nginx。前端当前使用：
+
+```env
+VITE_API_URL=/api/v1
+```
+
+Nginx 需要：
+
+- `/api/` 代理到后端服务
+- 非根前端路由回退到 `/index.html`
+- 启用 HTTPS
+- 设置正确的域名和 CORS_ORIGIN
+
+示例：
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name your-frontend-domain.example.com;
+
+    root /srv/edutrack/client/dist;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+## 后端启动
 
 ```bash
-# 清理缓存
-rm -rf node_modules
-rm package-lock.json
-npm install
+cd server
+npm ci
+npm run build
+NODE_ENV=production npm start
 ```
 
-### 3. CORS 错误
+建议使用进程管理器或容器运行后端，并配置健康检查：
 
-确保后端 `index.ts` 中的 CORS 配置正确：
-
-```typescript
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true
-}));
+```text
+GET /health
 ```
 
-## 后续优化建议
+生产健康检查必须显示 MongoDB connected，不能是 `json-fallback`。
 
-1. **数据库迁移**: 将本地 JSON 数据迁移到 MongoDB 或 MySQL
-2. **用户管理**: 添加密码修改、找回密码功能
-3. **数据导入**: 支持 Excel/CSV 批量导入成绩
-4. **报表导出**: 支持 PDF/Excel 成绩报告导出
-5. **通知系统**: 添加成绩发布通知、学习提醒
-6. **移动端适配**: 优化移动端体验
-7. **性能优化**: 添加数据缓存、分页加载
+## 上线前人工确认
 
-## 技术支持
-
-如有问题，请联系技术支持团队。
+- MongoDB Atlas 已撤销旧密码并配置网络访问白名单
+- 旧 JWT Secret 已废弃
+- 旧 LLM API Key 已撤销
+- `CORS_ORIGIN` 是真实 HTTPS 域名
+- `DATA_SOURCE_MODE=mongodb`
+- 管理员、教师、学生演示账号已准备
+- MongoDB 中没有 `strict-regression-` 测试残留
+- 已完成 `npm run test:mongo`
+- 已完成前端生产构建
+- 已验证部署后的登录、权限、论坛和在线考试流程

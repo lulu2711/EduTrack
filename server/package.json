@@ -10,7 +10,8 @@
     "lint": "eslint src --ext .ts",
     "test:regression": "npm run build && node tests/apiRegression.test.mjs",
     "test": "npm run test:regression && npm run test:strict",
-    "test:strict": "npm run build && node tests/strictMode.test.mjs"
+    "test:strict": "npm run build && node tests/strictMode.test.mjs",
+    "test:mongo": "npm run build && node tests/mongoStrictBusiness.test.mjs"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
