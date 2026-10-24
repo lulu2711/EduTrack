@@ -1,0 +1,37 @@
+# EduTrack 生产编排
+#
+# 用法（在服务器上，与本文件同一目录）：
+#   1. cp server/.env.production.example .env
+#   2. nano .env        # 填写下面的必填项
+#   3. docker compose up -d --build
+#
+# 必填项（不要把 .env 提交到 Git）：
+#   MONGODB_URI            轮换后的 Atlas 连接串
+#   JWT_SECRET             node scripts/generate-secrets.mjs 生成
+#   ADMIN_PASSWORD         至少 12 位
+#   STUDENT_DEMO_PASSWORD  至少 12 位
+#   CORS_ORIGIN            http://你的公网IP（不带端口、不带结尾斜杠）
+
+services:
+  edutrack:
+    build: .
+    image: edutrack:latest
+    container_name: edutrack
+    restart: always
+
+    # 宿主机 80 端口映射到容器 3000，这样直接访问 http://公网IP 即可
+    ports:
+      - "80:3000"
+
+    env_file:
+      - .env
+
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATA_SOURCE_MODE: mongodb
+      ADMIN_USERNAME: admin
+      JWT_EXPIRES_IN: 7d
+      LLM_BASE_URL: ""
+      LLM_API_KEY: ""
+      LLM_MODEL: ""
