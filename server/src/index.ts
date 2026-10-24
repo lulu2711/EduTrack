@@ -1,4 +1,8 @@
-import 'dotenv/config';
+// MUST stay the first import: it loads .env / .env.production before anything
+// else touches process.env.
+import './config/loadEnv';
+import fs from 'node:fs';
+import path from 'node:path';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -29,6 +33,13 @@ const allowedOrigins = new Set([
   'http://127.0.0.1:5173',
   'http://127.0.0.1:5174',
 ]);
+
+// When the API serves the frontend from the same process (single-origin
+// deployment), the browser still sends an Origin header on same-origin POSTs,
+// so this origin has to be allowed too. Render injects it automatically.
+if (process.env.RENDER_EXTERNAL_URL) {
+  allowedOrigins.add(process.env.RENDER_EXTERNAL_URL);
+}
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -90,6 +101,29 @@ app.use('/api/v1/data', dataRoutes);
 app.use('/api/v1/online-exams', onlineExamRoutes);
 app.use('/api/v1/assistant', assistantRoutes);
 app.use('/api/v1/forum', forumRoutes);
+
+// Serve the built frontend from the API process in production.
+// This turns the deployment into a single origin (one URL), which removes the
+// need for a separate static host, a reverse proxy and cross-origin config.
+// Injected as / from client/dist; any non-API GET falls back to index.html so
+// client-side routes keep working after a page refresh.
+// Look for the frontend build next to the compiled output rather than relative
+// to the working directory: the service may be started from the repo root
+// (Render runs `node server/dist/index.js`) or from the server directory.
+const clientDist = [
+  path.resolve(__dirname, '..', '..', 'client', 'dist'),
+  path.resolve(process.cwd(), 'client', 'dist'),
+  path.resolve(process.cwd(), '..', 'client', 'dist'),
+].find(candidate => fs.existsSync(candidate));
+
+if (process.env.NODE_ENV === 'production' && clientDist) {
+  app.use(express.static(clientDist, { index: false, maxAge: '1h' }));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/') || req.path === '/health') return next();
+    if (path.extname(req.path)) return next();
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
 
 // 错误处理
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

@@ -1,0 +1,74 @@
+# Render 蓝图配置（Infrastructure as Code）
+#
+# 作用：在 Render 上一次性创建并配置好整个服务，无需手动填写大量表单。
+# 使用方式：Render 控制台 → Blueprints → New Blueprint Instance → 选择本仓库。
+#
+# 说明：本蓝图只定义非敏感配置。所有密钥（MONGODB_URI、JWT_SECRET、口令等）
+# 均已设为 sync: false，必须在 Render 控制台的 Environment 面板中手工填写，
+# 绝不写入 Git 仓库。
+
+services:
+  - type: web
+    name: edutrack
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+
+    # 先后端编译，再前端编译；前端产物由后端进程直接托管（同源部署）
+    buildCommand: >-
+      npm ci --prefix server &&
+      npm run build --prefix server &&
+      npm ci --prefix client &&
+      npm run build --prefix client
+
+    # 必须从仓库根目录启动：这样才能找到根目录下的 school_data.json 等数据文件
+    startCommand: node server/dist/index.js
+
+    healthCheckPath: /health
+
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+
+      - key: NODE_ENV
+        value: production
+
+      - key: PORT
+        value: "3000"
+
+      # 严格模式：数据库不可用时返回 503，禁止静默回退到 JSON
+      - key: DATA_SOURCE_MODE
+        value: mongodb
+
+      - key: ADMIN_USERNAME
+        value: admin
+
+      - key: JWT_EXPIRES_IN
+        value: 7d
+
+      # 以下三项留空表示不启用大模型智能助手。
+      # 若要启用，三个必须同时填写，否则服务启动失败。
+      - key: LLM_BASE_URL
+        value: ""
+      - key: LLM_API_KEY
+        value: ""
+      - key: LLM_MODEL
+        value: ""
+
+      # ---- 需要在 Render 面板手工填写的变量（不要写进仓库）----
+      # MONGODB_URI           MongoDB Atlas 连接串（轮换后的新凭据）
+      # JWT_SECRET            至少 32 位随机串，建议 node scripts/generate-secrets.mjs 生成
+      # ADMIN_PASSWORD        至少 12 位
+      # STUDENT_DEMO_PASSWORD 至少 12 位
+      # CORS_ORIGIN           填 Render 自动提供的 RENDER_EXTERNAL_URL
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: STUDENT_DEMO_PASSWORD
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false

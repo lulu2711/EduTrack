@@ -6,6 +6,9 @@ const PLACEHOLDER_VALUES = new Set([
   'your-secret-key',
 ]);
 
+// Matches unresolved template tokens such as <REPLACE_WITH_...> or {TOKEN}.
+const TEMPLATE_TOKEN_PATTERN = /<[^>]+>|\{[^{}]+\}/;
+
 const required = (name: string): string => {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is required`);
@@ -55,5 +58,23 @@ export function validateEnvironment(): void {
   const llmValues = ['LLM_BASE_URL', 'LLM_API_KEY', 'LLM_MODEL'].map(name => process.env[name]?.trim());
   if (llmValues.some(Boolean) && llmValues.some(value => !value)) {
     throw new Error('LLM_BASE_URL, LLM_API_KEY, and LLM_MODEL must be configured together');
+  }
+
+  // Fail fast when a deployment shipped with unresolved template placeholders.
+  // Only the variable name is reported, never its value.
+  if (isProduction()) {
+    const mustBeResolved = [
+      'MONGODB_URI',
+      'JWT_SECRET',
+      'CORS_ORIGIN',
+      'ADMIN_PASSWORD',
+      'STUDENT_DEMO_PASSWORD',
+    ];
+    for (const name of mustBeResolved) {
+      const value = process.env[name]?.trim();
+      if (value && TEMPLATE_TOKEN_PATTERN.test(value)) {
+        throw new Error(`${name} still contains an unresolved placeholder and must be set to a real production value`);
+      }
+    }
   }
 }

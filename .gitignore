@@ -19,4 +19,7 @@ server/tsconfig.tsbuildinfo
 
 server/.env.production
 
+# 本地辅助工作目录（含本机记忆与排查记录，不应公开）
+.workbuddy/
+
 !server/.env.production.example
